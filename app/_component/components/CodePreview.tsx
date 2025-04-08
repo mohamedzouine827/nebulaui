@@ -2,6 +2,8 @@
 "use client"
 // components/CodePreview.tsx
 import React, { useState } from 'react';
+import CopyIcon from "@/public/copy.svg"
+import Image from 'next/image';
 
 interface CodePreviewProps {
   previewText?: string;
@@ -47,7 +49,8 @@ const CodePreview: React.FC<CodePreviewProps> = ({
         {/* Copy Icon */}
         <div className="w-6 h-6 bg-stone-500 rounded-sm flex items-center justify-center cursor-pointer">
           {/* You can add a real icon here */}
-          <span className="text-white text-xs">📋</span>
+          <Image src="/copy.svg" alt="copy icon" height={18} width={18} />
+
         </div>
       </div>
 
