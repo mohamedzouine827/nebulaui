@@ -8,6 +8,6 @@ export default function page() {
   };
 
   return (
-    <FileUploader />
+    <FileUploader variant="precise" />
   )
 }
