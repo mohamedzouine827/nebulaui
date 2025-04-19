@@ -3,7 +3,11 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import {
+  PlusIcon, XMarkIcon, DocumentIcon,
+  PhotoIcon, VideoCameraIcon, MusicalNoteIcon,
+  ArchiveBoxIcon, DocumentTextIcon, DocumentArrowDownIcon
+} from '@heroicons/react/24/solid';
 import UploadIcon from '@/public/UploadIcon.svg';
 
 type UploadStatus = {
@@ -16,6 +20,8 @@ type UploadStatus = {
 
 type FileUploaderProps = {
   variant?: 'compact' | 'detailed' | 'minimal' | 'precise';
+  maxFileSize?: number; // in MB
+  acceptedFileTypes?: string;
 };
 
 type UploadedFileProps = {
@@ -33,6 +39,28 @@ function formatSize(size: number) {
     : `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getFileIcon(type: string) {
+  const iconClass = "w-12 h-12 text-primary-600";
+  if (type.startsWith('image/')) return <PhotoIcon className={iconClass} />;
+  if (type.startsWith('video/')) return <VideoCameraIcon className={iconClass} />;
+  if (type.startsWith('audio/')) return <MusicalNoteIcon className={iconClass} />;
+  if (type === 'application/pdf') return <DocumentTextIcon className={iconClass} />;
+  if (
+    type === 'application/zip' ||
+    type === 'application/x-rar-compressed' ||
+    type === 'application/x-7z-compressed'
+  ) return <ArchiveBoxIcon className={iconClass} />;
+  if (
+    type === 'application/msword' ||
+    type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ) return <DocumentIcon className={iconClass} />;
+  if (
+    type === 'application/vnd.ms-excel' ||
+    type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ) return <DocumentArrowDownIcon className={iconClass} />;
+  return <DocumentIcon className={iconClass} />;
+}
+
 function UploadedFiles({
   name,
   size,
@@ -48,42 +76,50 @@ function UploadedFiles({
     precise: 'px-4 py-3 text-sm',
   };
 
-  const iconSize = variant === 'minimal' ? 'w-12 h-12 rounded-3xl' : 'w-12 h-12 rounded-3xl';
-  const gap = variant === 'minimal' ? 'gap-4' : 'gap-4';
+  const iconSize = variant === 'minimal' ? 'w-10 h-10 rounded-lg' : 'w-12 h-12 rounded-xl';
+  const gap = variant === 'minimal' ? 'gap-3' : 'gap-4';
 
   return (
     <div
-      className={`w-[473px] rounded-md outline outline-1 py-4 outline-offset-[-1px] outline-neutral-500 inline-flex flex-col bg-white ${containerClasses[variant]} ${
-        variant === 'minimal' ? 'gap-2' : 'gap-2'
-      }`}
+      className={`w-full rounded-lg border border-gray-200 bg-white shadow-xs hover:shadow-sm transition-shadow ${containerClasses[variant]} gap-2`}
     >
-      <div className="flex justify-between items-center w-full jus">
-        <div className={`flex justify-center items-center ${gap}`}>
-          <div className={`bg-zinc-300 ${iconSize}`} />
-          <div className="inline-flex flex-col justify-start items-start">
-            <div className="text-neutral-700 font-medium truncate leading-tight">
-              {name} ({progress < 100 ? `${progress}%` : 'Done'})
+      <div className="flex justify-between items-center w-full">
+        <div className={`flex items-center ${gap}`}>
+          <div className={`${iconSize} flex items-center justify-center bg-primary-50`}>
+            {getFileIcon(type)}
+          </div>
+          <div className="inline-flex flex-col justify-start items-start overflow-hidden">
+            <div className="text-gray-900 font-medium truncate max-w-[220px] leading-tight">
+              {name}
             </div>
-            {variant !== 'minimal' && (
-              <div className="text-neutral-500 text-xs font-normal leading-tight">
-                {type || 'Unknown'} · {formatSize(size)}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="text-primary-600 text-xs font-medium">
+                {progress < 100 ? `${progress}%` : 'Uploaded'}
+              </span>
+              {variant !== 'minimal' && (
+                <span className="text-gray-500 text-xs font-normal">
+                  · {type.split('/')[1] || 'file'} · {formatSize(size)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <button
           onClick={onRemove}
-          className="text-neutral-400 hover:text-red-500 transition-colors"
+          className="text-gray-400 hover:text-error-500 transition-colors p-1"
+          aria-label="Remove file"
         >
-          <XMarkIcon className="w-3.5 h-3.5 cursor-pointer" />
+          <XMarkIcon className="w-4 h-4 cursor-pointer" />
         </button>
       </div>
 
-      {variant === 'precise' && (
-        <div className="w-full h-[7px] bg-neutral-200 rounded-full overflow-hidden mt-1">
-          <div
-            className="h-full bg-neutral-500 transition-all duration-300 ease-in-out"
-            style={{ width: `${progress}%` }}
+      {(variant === 'precise' || variant === 'detailed') && (
+        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+          <motion.div
+            className="h-full bg-gray-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
           />
         </div>
       )}
@@ -91,10 +127,14 @@ function UploadedFiles({
   );
 }
 
-
-export default function FileUploader({ variant = 'detailed' }: FileUploaderProps) {
+export default function FileUploader({ 
+  variant = 'detailed', 
+  maxFileSize = 100,
+  acceptedFileTypes = '*/*'
+}: FileUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<UploadStatus[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   const generateId = () => {
     return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -108,7 +148,13 @@ export default function FileUploader({ variant = 'detailed' }: FileUploaderProps
 
   const handleFiles = (files: FileList) => {
     const filesArray = Array.from(files);
-    const newUploads = filesArray.map((file) => ({
+    const validFiles = filesArray.filter(file => file.size <= maxFileSize * 1024 * 1024);
+    
+    if (validFiles.length !== filesArray.length) {
+      console.warn(`Some files were too large (max ${maxFileSize}MB)`);
+    }
+
+    const newUploads = validFiles.map((file) => ({
       id: generateId(),
       name: file.name,
       type: file.type,
@@ -118,31 +164,34 @@ export default function FileUploader({ variant = 'detailed' }: FileUploaderProps
 
     setUploads((prev) => [...prev, ...newUploads]);
 
-    filesArray.forEach((file, index) => {
+    validFiles.forEach((file, index) => {
       const id = newUploads[index].id;
-      const fileSizeMB = file.size / (1024 * 1024);
-      simulateUpload(id, file.name, fileSizeMB);
+      simulateUpload(id, file.size);
     });
   };
 
-  const simulateUpload = (id: string, fileName: string, fileSizeInMB: number) => {
-    let progress = 1;
-    const speedFactor = Math.max(0.5, 10 / fileSizeInMB);
+  
+  const simulateUpload = (id: string, size: number) => {
+    let progress = 0;
+    const uploadSpeed = 10000_000; // bytes per second (e.g. 500 KB/s)
+    const totalDuration = (size / uploadSpeed) * 1000; // ms
+    const intervalTime = 100; // ms between updates
+    const steps = totalDuration / intervalTime;
+    const progressIncrement = 100 / steps;
 
     const interval = setInterval(() => {
-      const increment = Math.floor(Math.random() * 8 + 2);
-      progress = Math.min(progress + increment, 100);
+      progress = Math.min(progress + progressIncrement, 100);
 
       setUploads((prevUploads) =>
         prevUploads.map((upload) =>
-          upload.id === id ? { ...upload, progress } : upload
+          upload.id === id ? { ...upload, progress: Math.floor(progress) } : upload
         )
       );
 
       if (progress >= 100) {
         clearInterval(interval);
       }
-    }, Math.floor((Math.random() * 300 + 100) / speedFactor));
+    }, intervalTime);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,6 +203,7 @@ export default function FileUploader({ variant = 'detailed' }: FileUploaderProps
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFiles(e.dataTransfer.files);
     }
@@ -161,6 +211,11 @@ export default function FileUploader({ variant = 'detailed' }: FileUploaderProps
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragActive(false);
   };
 
   const handleRemoveFile = (id: string) => {
@@ -168,55 +223,62 @@ export default function FileUploader({ variant = 'detailed' }: FileUploaderProps
   };
 
   return (
-    <section className="bg-gray-200 rounded-[7px] px-8 w-fit py-8">
-      <div className="w-[473px] inline-flex flex-col justify-start items-center gap-7">
+    <section className="bg-gray-50 rounded-xl p-6 w-full max-w-md">
+      <div className="w-full flex flex-col items-center gap-6">
         <input
           ref={inputRef}
           type="file"
           multiple
           onChange={handleFileChange}
           className="hidden"
+          accept={acceptedFileTypes}
         />
 
         {/* Upload Box */}
         <motion.div
           layout
-          className={`cursor-pointer relative self-stretch rounded-[7px] flex bg-white border border-dashed border-[#7A7A7A] overflow-hidden transition-all duration-50
-            ${uploads.length > 0 ? ' px-8 py-12 flex  flex-col justify-center items-center gap-4' : 'px-24 py-32 flex-col gap-4'}
-            flex justify-start items-center`}
+          className={`cursor-pointer relative w-full rounded-xl flex flex-col items-center justify-center transition-all duration-150
+            ${uploads.length > 0 ? 'p-6 border-2' : 'p-12 border-2'}
+            ${isDragActive ? 'border-primary-300 bg-primary-50' : 'border-dashed border-gray-300 bg-white'}
+          `}
           onClick={handleClick}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          whileHover={{
-            backgroundColor: '#F5F5F5',
-            borderColor: '#A3A3A3',
-          }}
-          transition={{
-            layout: { duration: 0.1, type: 'tween', stiffness: 180, damping: 20 },
-          }}
+          onDragLeave={handleDragLeave}
         >
           {uploads.length > 0 ? (
             <>
-              <PlusIcon className="w-5 h-5 text-[#7A7A7A]" />
-              <div className="text-neutral-500 text-sm font-medium">
-                Drop or click to upload your file
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                  <PlusIcon className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-900 font-medium">Add more files</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Drag and drop or click to browse
+                  </p>
+                </div>
               </div>
             </>
           ) : (
             <>
-              <Image
-                className="w-12 h-12 fill-[#7A7A7A]"
-                src={UploadIcon.src}
-                alt="Upload Icon"
-                width={48}
-                height={48}
-              />
-              <div className="flex flex-col gap-2 items-center justify-center">
-                <div className="text-neutral-700 text-base font-medium z-20">
-                  Drop or click to upload your file
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+                  <Image
+                    src={UploadIcon.src}
+                    alt="Upload Icon"
+                    width={24}
+                    height={24}
+                    className="text-primary-600"
+                  />
                 </div>
-                <div className="text-neutral-500 text-sm font-normal z-20">
-                  Max 5 Mb for each file
+                <div className="text-center">
+                  <p className="text-gray-900 font-medium">
+                    Drag and drop your files here
+                  </p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    or click to browse (max {maxFileSize}MB per file)
+                  </p>
                 </div>
               </div>
             </>
@@ -225,10 +287,7 @@ export default function FileUploader({ variant = 'detailed' }: FileUploaderProps
 
         {/* File List */}
         {uploads.length > 0 && (
-          <motion.div
-            layout
-            className="self-stretch flex flex-col justify-start items-center gap-4"
-          >
+          <motion.div layout className="w-full flex flex-col gap-3">
             <AnimatePresence>
               {uploads.map((upload) => (
                 <motion.div
