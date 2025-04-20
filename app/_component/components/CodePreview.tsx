@@ -1,65 +1,90 @@
-// components/CodePreview.tsx
 "use client"
-// components/CodePreview.tsx
-import React, { useState } from 'react';
-import CopyIcon from "@/public/copy.svg"
-import Image from 'next/image';
+
+import React, { useState } from "react"
+import { Copy } from "lucide-react"
 
 interface CodePreviewProps {
-  previewText?: string;
-  codeText?: string;
+  title?: string
+  previewText?: string
+  codeText?: string
+  code: string
+  children: React.ReactNode
 }
 
 const CodePreview: React.FC<CodePreviewProps> = ({
-  previewText = 'Preview',
-  codeText = 'Code',
+  title,
+  previewText = "Preview",
+  codeText = "Code",
+  code,
+  children,
 }) => {
-  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [activeTab, setActiveTab] = useState<"preview" | "code">("preview")
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <div className="w-[731px] flex flex-col items-center gap-6">
+    <div className="w-full flex flex-col gap-4 py-8">
+      {/* Title */}
+      {title && (
+        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+      )}
+
       {/* Tabs */}
-      <div className="w-full flex items-center justify-between bg-white border-b border-gray-300">
+      <div className="flex items-center justify-between border-b border-gray-200">
         <div className="flex items-center">
-          {/* Preview Tab */}
           <button
-            onClick={() => setActiveTab('preview')}
+            onClick={() => setActiveTab("preview")}
             className={`px-4 py-2 ${
-              activeTab === 'preview'
-                ? 'border-b-2 border-black text-black font-medium'
-                : 'text-neutral-500 font-normal'
-            } text-base`}
+              activeTab === "preview"
+                ? "border-b-2 border-black text-black font-medium"
+                : "text-neutral-500"
+            }`}
           >
             {previewText}
           </button>
-
-          {/* Code Tab */}
           <button
-            onClick={() => setActiveTab('code')}
+            onClick={() => setActiveTab("code")}
             className={`px-4 py-2 ${
-              activeTab === 'code'
-                ? 'border-b-2 border-black text-black font-medium cursor-pointer'
-                : 'text-neutral-500 font-normal cursor-pointer'
-            } text-base`}
+              activeTab === "code"
+                ? "border-b-2 border-black text-black font-medium"
+                : "text-neutral-500"
+            }`}
           >
             {codeText}
           </button>
         </div>
 
-        {/* Copy Icon */}
-        <div className="w-6 h-6 bg-stone-500 rounded-sm flex items-center justify-center cursor-pointer">
-          {/* You can add a real icon here */}
-          <Image src="/copy.svg" alt="copy icon" height={18} width={18} />
-
-        </div>
+        <button
+          onClick={handleCopy}
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded transition"
+        >
+          {copied ? (
+            <span className="text-xs text-green-500">✓</span>
+          ) : (
+            <Copy className="w-4 h-4 text-neutral-600" />
+          )}
+        </button>
       </div>
 
       {/* Content */}
-      <div className="w-full h-80 border border-zinc-300 rounded-lg flex items-center justify-center text-gray-400 text-lg">
-        {activeTab === 'preview' ? 'Preview Content' : 'Code Content'}
+      <div className="w-full border border-gray-300 rounded-md bg-white overflow-hidden min-h-[400px]">
+        {activeTab === "preview" ? (
+          <div className="w-full h-full flex items-center justify-center p-6">
+            {children}
+          </div>
+        ) : (
+          <pre className="w-full h-full p-6 text-sm text-gray-800 whitespace-pre-wrap overflow-auto">
+            <code>{code}</code>
+          </pre>
+        )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CodePreview;
+export default CodePreview

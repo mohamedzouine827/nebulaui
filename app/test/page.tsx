@@ -8,6 +8,6 @@ export default function page() {
   };
 
   return (
-    <FileUploader variant="precise" acceptedFileTypes = '*/*' />
+    <FileUploader variant="progressive" acceptedFileTypes = '*/*' />
   )
 }

@@ -19,8 +19,8 @@ type UploadStatus = {
 };
 
 type FileUploaderProps = {
-  variant?: 'compact' | 'detailed' | 'minimal' | 'precise';
-  maxFileSize?: number; // in MB
+  variant?: 'compact' | 'detailed' | 'minimal' | 'precise' | 'progressive';
+  maxFileSize?: number;
   acceptedFileTypes?: string;
 };
 
@@ -30,7 +30,7 @@ type UploadedFileProps = {
   type: string;
   progress: number;
   onRemove?: () => void;
-  variant: 'compact' | 'detailed' | 'minimal' | 'precise';
+  variant: 'compact' | 'detailed' | 'minimal' | 'precise' | 'progressive';
 };
 
 function formatSize(size: number) {
@@ -74,15 +74,14 @@ function UploadedFiles({
     detailed: 'px-4 py-3 text-sm',
     minimal: 'px-3 py-2 text-sm',
     precise: 'px-4 py-3 text-sm',
+    progressive: 'px-4 py-3 text-sm',
   };
 
-  const iconSize = variant === 'minimal' ? 'w-10 h-10 rounded-lg' : 'w-12 h-12 rounded-xl';
+  const iconSize = variant === 'minimal' ? 'w-8  h-8  rounded-lg' : 'w-8  h-8  rounded-xl';
   const gap = variant === 'minimal' ? 'gap-3' : 'gap-4';
 
   return (
-    <div
-      className={`w-full rounded-lg border border-gray-200 bg-white shadow-xs hover:shadow-sm transition-shadow ${containerClasses[variant]} gap-2`}
-    >
+    <div className={`w-full rounded-lg border border-gray-200 bg-white shadow-xs hover:shadow-sm transition-shadow ${containerClasses[variant]} gap-2`}>
       <div className="flex justify-between items-center w-full">
         <div className={`flex items-center ${gap}`}>
           <div className={`${iconSize} flex items-center justify-center bg-primary-50`}>
@@ -113,22 +112,27 @@ function UploadedFiles({
         </button>
       </div>
 
-      {(variant === 'precise' || variant === 'detailed') && (
-        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
-          <motion.div
-            className="h-full bg-gray-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
-          />
+      {(variant === 'precise' || variant === 'detailed' || variant === 'progressive') && (
+        <div className="w-full flex items-center gap-2 mt-2">
+          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gray-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+            />
+          </div>
+          {variant === 'progressive' && (
+            <span className="text-xs text-gray-500 w-[32px] text-right">{progress}%</span>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export default function FileUploader({ 
-  variant = 'detailed', 
+export default function FileUploader({
+  variant = 'detailed',
   maxFileSize = 100,
   acceptedFileTypes = '*/*'
 }: FileUploaderProps) {
@@ -136,11 +140,10 @@ export default function FileUploader({
   const [uploads, setUploads] = useState<UploadStatus[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
 
-  const generateId = () => {
-    return typeof crypto !== 'undefined' && crypto.randomUUID
+  const generateId = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-  };
 
   const handleClick = () => {
     inputRef.current?.click();
@@ -149,7 +152,7 @@ export default function FileUploader({
   const handleFiles = (files: FileList) => {
     const filesArray = Array.from(files);
     const validFiles = filesArray.filter(file => file.size <= maxFileSize * 1024 * 1024);
-    
+
     if (validFiles.length !== filesArray.length) {
       console.warn(`Some files were too large (max ${maxFileSize}MB)`);
     }
@@ -162,7 +165,7 @@ export default function FileUploader({
       progress: 0,
     }));
 
-    setUploads((prev) => [...prev, ...newUploads]);
+    setUploads(prev => [...prev, ...newUploads]);
 
     validFiles.forEach((file, index) => {
       const id = newUploads[index].id;
@@ -170,32 +173,27 @@ export default function FileUploader({
     });
   };
 
-  
   const simulateUpload = (id: string, size: number) => {
     let progress = 0;
-    const uploadSpeed = 10000_000; // bytes per second (e.g. 500 KB/s)
-    const totalDuration = (size / uploadSpeed) * 1000; // ms
-    const intervalTime = 100; // ms between updates
+    const uploadSpeed = 10000_000;
+    const totalDuration = (size / uploadSpeed) * 1000;
+    const intervalTime = 100;
     const steps = totalDuration / intervalTime;
     const progressIncrement = 100 / steps;
 
     const interval = setInterval(() => {
       progress = Math.min(progress + progressIncrement, 100);
-
-      setUploads((prevUploads) =>
-        prevUploads.map((upload) =>
+      setUploads(prev =>
+        prev.map(upload =>
           upload.id === id ? { ...upload, progress: Math.floor(progress) } : upload
         )
       );
-
-      if (progress >= 100) {
-        clearInterval(interval);
-      }
+      if (progress >= 100) clearInterval(interval);
     }, intervalTime);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (e.target.files?.length) {
       handleFiles(e.target.files);
       e.target.value = '';
     }
@@ -204,7 +202,7 @@ export default function FileUploader({
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    if (e.dataTransfer.files?.length) {
       handleFiles(e.dataTransfer.files);
     }
   };
@@ -214,12 +212,10 @@ export default function FileUploader({
     setIsDragActive(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragActive(false);
-  };
+  const handleDragLeave = () => setIsDragActive(false);
 
   const handleRemoveFile = (id: string) => {
-    setUploads((prev) => prev.filter((file) => file.id !== id));
+    setUploads(prev => prev.filter(file => file.id !== id));
   };
 
   return (
@@ -234,79 +230,63 @@ export default function FileUploader({
           accept={acceptedFileTypes}
         />
 
-        {/* Upload Box */}
         <motion.div
           layout
           className={`cursor-pointer relative w-full rounded-xl flex flex-col items-center justify-center transition-all duration-150
             ${uploads.length > 0 ? 'p-6 border-2' : 'p-12 border-2'}
-            ${isDragActive ? 'border-primary-300 bg-primary-50' : 'border-dashed border-gray-300 bg-white'}
-          `}
+            ${isDragActive ? 'border-primary-300 bg-primary-50' : 'border-dashed border-gray-300 bg-white'}`}
           onClick={handleClick}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
         >
           {uploads.length > 0 ? (
-            <>
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                  <PlusIcon className="w-5 h-5 text-primary-600" />
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-900 font-medium">Add more files</p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    Drag and drop or click to browse
-                  </p>
-                </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                <PlusIcon className="w-5 h-5 text-primary-600" />
               </div>
-            </>
+              <div className="text-center">
+                <p className="text-gray-900 font-medium">Add more files</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Drag and drop or click to browse
+                </p>
+              </div>
+            </div>
           ) : (
-            <>
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-                  <Image
-                    src={UploadIcon.src}
-                    alt="Upload Icon"
-                    width={24}
-                    height={24}
-                    className="text-primary-600"
-                  />
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-900 font-medium">
-                    Drag and drop your files here
-                  </p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    or click to browse (max {maxFileSize}MB per file)
-                  </p>
-                </div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+                <Image
+                  src={UploadIcon.src}
+                  alt="Upload Icon"
+                  width={24}
+                  height={24}
+                />
               </div>
-            </>
+              <div className="text-center">
+                <p className="text-gray-900 font-medium">
+                  Drag and drop your files here
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  or click to browse (max {maxFileSize}MB per file)
+                </p>
+              </div>
+            </div>
           )}
         </motion.div>
 
-        {/* File List */}
         {uploads.length > 0 && (
           <motion.div layout className="w-full flex flex-col gap-3">
             <AnimatePresence>
-              {uploads.map((upload) => (
-                <motion.div
-                  key={upload.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <UploadedFiles
-                    name={upload.name}
-                    size={upload.size}
-                    type={upload.type}
-                    progress={upload.progress}
-                    onRemove={() => handleRemoveFile(upload.id)}
-                    variant={variant}
-                  />
-                </motion.div>
+              {uploads.map((file) => (
+                <UploadedFiles
+                  key={file.id}
+                  name={file.name}
+                  size={file.size}
+                  type={file.type}
+                  progress={file.progress}
+                  variant={variant}
+                  onRemove={() => handleRemoveFile(file.id)}
+                />
               ))}
             </AnimatePresence>
           </motion.div>
