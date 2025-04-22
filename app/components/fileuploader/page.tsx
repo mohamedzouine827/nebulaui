@@ -3,7 +3,7 @@ import FileUploader from "@/app/_component/components/FileUploader"
 
 export default function FileUploaderDocs() {
   return (
-    <div className="space-y-10">
+    <div className="">
       {/* Page Heading */}
       <div className="space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">FileUploader</h2>

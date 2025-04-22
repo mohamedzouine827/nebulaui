@@ -28,7 +28,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({
   }
 
   return (
-    <div className="w-full flex flex-col gap-4 py-8">
+    <div className="min-w-[950px] w-full flex flex-col gap-4 py-8">
       {/* Title */}
       {title && (
         <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
@@ -72,7 +72,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({
       </div>
 
       {/* Content */}
-      <div className="w-full border border-gray-300 rounded-md bg-white overflow-hidden min-h-[400px]">
+      <div className="w-full border border-gray-300 rounded-md bg-white overflow-hidden min-h-[600px] justify-center flex items-center">
         {activeTab === "preview" ? (
           <div className="w-full h-full flex items-center justify-center p-6">
             {children}
